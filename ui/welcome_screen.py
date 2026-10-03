@@ -16,7 +16,7 @@ from network.updater import CURRENT_APP_VERSION
 from ui.theme import (
     COLOR_BG, COLOR_PANEL, COLOR_PANEL_LIGHT, COLOR_BORDER,
     COLOR_TEXT_MAIN, COLOR_TEXT_MUTED, COLOR_TEXT_DARK,
-    COLOR_CYAN, COLOR_READY, COLOR_PURPLE,
+    COLOR_CYAN, COLOR_READY, COLOR_WAIT, COLOR_PURPLE,
     FONT_TITLE_LARGE, FONT_TITLE, FONT_SUBTITLE,
     FONT_BODY, FONT_BOLD, FONT_MONO
 )
@@ -171,19 +171,28 @@ class WelcomeScreen(tk.Frame):
         self.entry_room_code.insert(0, saved_room)
         self.entry_room_code.pack(fill=tk.X, pady=(4, 0), ipady=6)
 
-        # 최대 인원
+        # 인원수 제한
         col_max = tk.Frame(row_host, bg=COLOR_PANEL)
         col_max.pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=(6, 0))
-        tk.Label(col_max, text="최대 인원", font=FONT_BOLD, fg=COLOR_TEXT_MAIN, bg=COLOR_PANEL).pack(anchor="w")
-        self.combo_max = ttk.Combobox(
+
+        max_title_row = tk.Frame(col_max, bg=COLOR_PANEL)
+        max_title_row.pack(fill=tk.X)
+        tk.Label(max_title_row, text="인원수 제한", font=FONT_BOLD, fg=COLOR_TEXT_MAIN, bg=COLOR_PANEL).pack(side=tk.LEFT)
+        tk.Label(max_title_row, text="(0 = 무제한)", font=FONT_BODY, fg=COLOR_WAIT, bg=COLOR_PANEL).pack(side=tk.RIGHT)
+
+        self.entry_max_players = tk.Entry(
             col_max,
-            values=["4명", "8명", "10명 (5:5)", "16명", "30명", "무제한"],
-            state="readonly",
-            font=FONT_BODY
+            font=FONT_BODY,
+            bg=COLOR_PANEL_LIGHT,
+            fg=COLOR_TEXT_MAIN,
+            insertbackground=COLOR_TEXT_MAIN,
+            relief=tk.FLAT,
+            bd=0
         )
-        saved_max = self.config.get("host_max_players") or "10명 (5:5)"
-        self.combo_max.set(saved_max)
-        self.combo_max.pack(fill=tk.X, pady=(4, 0), ipady=4)
+        saved_max = str(self.config.get("host_max_players", "0")).strip()
+        saved_val = saved_max if saved_max.isdigit() else "0"
+        self.entry_max_players.insert(0, saved_val)
+        self.entry_max_players.pack(fill=tk.X, pady=(4, 0), ipady=6)
 
         # 방 생성 버튼
         btn_create = tk.Button(
@@ -300,27 +309,22 @@ class WelcomeScreen(tk.Frame):
             messagebox.showwarning("입력 필요", "방 코드를 입력해 주세요.")
             return
 
-        max_text = self.combo_max.get()
-        max_players = 10
-        if "4명" in max_text:
-            max_players = 4
-        elif "8명" in max_text:
-            max_players = 8
-        elif "10명" in max_text:
-            max_players = 10
-        elif "16명" in max_text:
-            max_players = 16
-        elif "30명" in max_text:
-            max_players = 30
-        elif "무제한" in max_text:
-            max_players = 999
+        max_input = self.entry_max_players.get().strip()
+        try:
+            max_players = int(max_input) if max_input else 0
+        except ValueError:
+            messagebox.showwarning("입력 확인", "인원수 제한에는 숫자만 입력해 주세요.\n(0을 입력하면 무제한으로 설정됩니다)")
+            return
+
+        if max_players < 0:
+            max_players = 0
 
         # 입력값을 로컬 PC에 영구 저장
         save_config({
             "host_game_name": game_name,
             "host_nickname": host_name,
             "host_room_code": room_code,
-            "host_max_players": max_text,
+            "host_max_players": str(max_players),
         })
 
         self.on_create_room(room_code, game_name, host_name, max_players)

@@ -15,7 +15,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "host_game_name": "오버워치 내전",
     "host_nickname": "용봉탕",
     "host_room_code": "",
-    "host_max_players": "10명 (5:5)",
+    "host_max_players": "0",
     "host_notice": "참가자분들은 준비 완료 버튼을 눌러주세요!",
     "participant_nickname": "",
     "participant_room_code": "",

@@ -128,9 +128,11 @@ class HostView(tk.Frame):
         self.btn_copy.pack(side=tk.LEFT)
 
         # 오른쪽: 참가 인원 & 레디 카운터
+        max_allowed = self.net.room_info.get("max_players", 0)
+        limit_text = f" / {max_allowed}명" if max_allowed > 0 and max_allowed < 999 else " (무제한)"
         self.lbl_player_count = tk.Label(
             code_banner,
-            text="참가 인원: 0명 | 준비 완료: 0명",
+            text=f"참가 인원: 0명{limit_text} | 준비 완료: 0명",
             font=FONT_TITLE,
             fg=COLOR_READY,
             bg=COLOR_PANEL_LIGHT
@@ -436,10 +438,15 @@ class HostView(tk.Frame):
                 values=(status_text, p.get("nickname", "참가자"), p.get("client_id", ""))
             )
 
-        max_allowed = self.net.room_info.get("max_players", 10)
-        self.lbl_player_count.config(
-            text=f"참가 인원: {total_players} / {max_allowed}명 | 준비 완료: {ready_count} / {total_players}명"
-        )
+        max_allowed = self.net.room_info.get("max_players", 0)
+        if max_allowed <= 0 or max_allowed >= 999:
+            self.lbl_player_count.config(
+                text=f"참가 인원: {total_players}명 (무제한) | 준비 완료: {ready_count} / {total_players}명"
+            )
+        else:
+            self.lbl_player_count.config(
+                text=f"참가 인원: {total_players} / {max_allowed}명 | 준비 완료: {ready_count} / {total_players}명"
+            )
 
     def _refresh_room_info(self, info: dict):
         current_entry = self.entry_game_name.get()

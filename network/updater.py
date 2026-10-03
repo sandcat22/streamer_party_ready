@@ -15,7 +15,7 @@ import subprocess
 import threading
 from typing import Optional, Dict, Any, Callable
 
-CURRENT_APP_VERSION = "1.0.1"
+CURRENT_APP_VERSION = "1.0.2"
 
 
 def parse_version(v_str: str) -> tuple:
