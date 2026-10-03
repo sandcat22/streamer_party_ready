@@ -272,39 +272,7 @@ class WelcomeScreen(tk.Frame):
         )
         btn_join.pack(fill=tk.X, pady=(10, 0), ipady=8)
 
-        # ---------------------------------------------------------
-        # 하단 상태바 및 업데이트 확인 링크
-        # ---------------------------------------------------------
-        footer = tk.Frame(self, bg=COLOR_BG, pady=10)
-        footer.pack(fill=tk.X, side=tk.BOTTOM)
 
-        status_box = tk.Frame(footer, bg=COLOR_BG)
-        status_box.pack()
-
-        self.status_lbl = tk.Label(
-            status_box,
-            text="🌐 공용 고속 네트워크 연결 준비 완료 (포트포워딩 불필요)",
-            font=FONT_BODY,
-            fg=COLOR_TEXT_MUTED,
-            bg=COLOR_BG
-        )
-        self.status_lbl.pack(side=tk.LEFT, padx=8)
-
-        if self.on_check_update:
-            btn_chk_ver = tk.Button(
-                status_box,
-                text=f"v{CURRENT_APP_VERSION} 🔄 업데이트 확인",
-                font=FONT_BODY,
-                bg=COLOR_BG,
-                fg=COLOR_CYAN,
-                activebackground=COLOR_BG,
-                activeforeground="#80D8FF",
-                relief=tk.FLAT,
-                bd=0,
-                cursor="hand2",
-                command=self.on_check_update
-            )
-            btn_chk_ver.pack(side=tk.LEFT, padx=4)
 
     def _copy_host_code(self):
         code = self.entry_room_code.get().strip()

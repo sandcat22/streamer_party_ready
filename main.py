@@ -6,6 +6,7 @@
 import os
 import sys
 import ctypes
+import multiprocessing
 import tkinter as tk
 
 # 고해상도(HiDPI / 4K) 디스플레이에서 폰트 및 UI 선명도 유지
@@ -39,4 +40,5 @@ def main():
 
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
     main()

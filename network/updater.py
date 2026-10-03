@@ -3,6 +3,7 @@ GitHub 기반 자동 업데이트 모듈 (Auto Updater)
 - GitHub Releases API 및 version.json을 통한 최신 버전 감지
 - 새 버전 감지 시 우측 하단에 업데이트 알림 버튼 노출
 - 원클릭 자동 다운로드 및 무중단 재실행(스왑 배치 스크립트) 지원
+- PyInstaller 보안 검증(Parent Process Validation) 충돌 방지 환경변수 정제
 """
 
 import os
@@ -153,6 +154,12 @@ class AutoUpdater:
                 updater_bat = os.path.join(exe_dir, "updater.bat")
                 bat_script = f"""@echo off
 chcp 65001 > nul
+set _PYI_PARENT_PROCESS_LEVEL=
+set _MEIPASS2=
+set _PYI_SPLASH_IPC=
+set PYTHONPATH=
+set PYTHONHOME=
+
 timeout /t 1 /nobreak > nul
 
 :retry
@@ -163,7 +170,10 @@ if exist "{target_exe}" (
 )
 
 move /y "{new_exe}" "{target_exe}" >nul 2>nul
+
 start "" "{target_exe}"
+timeout /t 3 /nobreak > nul
+
 (goto) 2>nul & del "%~f0"
 """
                 with open(updater_bat, "w", encoding="utf-8") as f:
@@ -172,8 +182,14 @@ start "" "{target_exe}"
                 if on_complete:
                     on_complete(True, "다운로드 완료! 프로그램을 재시작합니다.")
 
+                # PyInstaller 자식 프로세스 플래그를 정제하여 새로운 루트 프로세스로 실행되도록 보장
+                clean_env = os.environ.copy()
+                for key in list(clean_env.keys()):
+                    if key.startswith("_PYI_") or key.startswith("_MEI") or key in ("PYTHONPATH", "PYTHONHOME"):
+                        clean_env.pop(key, None)
+
                 # 업데이터 배치 스크립트 실행 후 현재 프로세스 정상 종료
-                subprocess.Popen(["cmd.exe", "/c", updater_bat], shell=True)
+                subprocess.Popen(["cmd.exe", "/c", updater_bat], shell=True, env=clean_env)
                 time.sleep(0.5)
                 os._exit(0)
 
