@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*$py.class
+
+# PyInstaller
+build/
+*.spec.bak
+
+# App config & temp files
+*.tmp
+updater.bat
+StreamerPartyReady_new.exe
