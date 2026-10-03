@@ -2,6 +2,7 @@
 참가자 (시청자/지인) 뷰 (Participant Ready Screen)
 - 방장이 지정한 게임명 및 실시간 공지 확인
 - 직관적인 대형 [준비 완료(READY)] 토글 버튼
+- 방 코드 복사 버튼 지원
 - 현재 방의 다른 참가자 현황 확인
 """
 
@@ -44,10 +45,24 @@ class ParticipantView(tk.Frame):
 
         tk.Label(top_row, text="🙋 참가자 모드", font=FONT_TITLE, fg=COLOR_READY, bg=COLOR_PANEL).pack(side=tk.LEFT)
 
-        # 방 코드 & 내 닉네임 뱃지
+        # 방 코드 & 내 닉네임 뱃지 + 복사 버튼
         badge = tk.Frame(top_row, bg=COLOR_PANEL_LIGHT, padx=8, pady=3)
         badge.pack(side=tk.LEFT, padx=14)
-        tk.Label(badge, text=f"방 코드: {self.net.room_code} | 내 닉네임: {self.net.my_nickname}", font=FONT_BOLD, fg=COLOR_CYAN, bg=COLOR_PANEL_LIGHT).pack()
+        tk.Label(badge, text=f"방 코드: {self.net.room_code} | 내 닉네임: {self.net.my_nickname}", font=FONT_BOLD, fg=COLOR_CYAN, bg=COLOR_PANEL_LIGHT).pack(side=tk.LEFT)
+
+        self.btn_part_copy = tk.Button(
+            badge,
+            text="📋 복사",
+            font=("Malgun Gothic", 8),
+            bg=COLOR_CYAN,
+            fg=COLOR_TEXT_DARK,
+            relief=tk.FLAT,
+            bd=0,
+            padx=4,
+            cursor="hand2",
+            command=self._copy_code
+        )
+        self.btn_part_copy.pack(side=tk.LEFT, padx=(6, 0))
 
         # 나가기 버튼
         btn_leave = tk.Button(
@@ -59,6 +74,7 @@ class ParticipantView(tk.Frame):
             relief=tk.FLAT,
             padx=8,
             pady=2,
+            cursor="hand2",
             command=self._confirm_leave
         )
         btn_leave.pack(side=tk.RIGHT)
@@ -154,6 +170,13 @@ class ParticipantView(tk.Frame):
         self.net.on_player_list_changed = self._on_players_updated_threadsafe
         self.net.on_room_info_changed = self._on_info_updated_threadsafe
         self.net.on_host_command_received = self._on_command_threadsafe
+
+    def _copy_code(self):
+        code = self.net.room_code or ""
+        self.clipboard_clear()
+        self.clipboard_append(code)
+        self.btn_part_copy.config(text="✅ 복사됨!", bg=COLOR_READY)
+        self.after(1500, lambda: self.btn_part_copy.config(text="📋 복사", bg=COLOR_CYAN))
 
     def _toggle_ready(self):
         new_ready = not self.net.is_ready

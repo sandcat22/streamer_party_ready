@@ -1,8 +1,8 @@
 """
 방장 (스트리머) 대시보드 뷰 (Host Room Dashboard)
 - 실시간 참가자 명단 및 준비 완료(READY) 현황판
-- 방 코드 복사, OBS 방송용 Always-on-Top 지원
-- 팀 나누기, 무작위 추첨, 전체 레디 핑, 공지 전송 등 스트리머 특화 기능
+- 절대 짤리지 않는 대형 방 코드 배너 및 시각적 피드백 복사 버튼
+- OBS 방송용 Always-on-Top 지원, 팀 나누기, 무작위 추첨, 전체 레디 핑
 - 변경된 게임명 및 공지사항 로컬 PC 영구 저장
 """
 
@@ -44,40 +44,16 @@ class HostView(tk.Frame):
         self._bind_network_events()
 
     def _build_ui(self):
-        # 1. 상단 메인 헤더 (방 코드 및 주요 지표)
-        header = tk.Frame(self, bg=COLOR_PANEL, padx=16, pady=12, highlightbackground=COLOR_BORDER, highlightthickness=1)
+        # 1. 상단 메인 헤더
+        header = tk.Frame(self, bg=COLOR_PANEL, padx=16, pady=10, highlightbackground=COLOR_BORDER, highlightthickness=1)
         header.pack(fill=tk.X, padx=12, pady=(10, 8))
 
-        # 윗줄: 방 코드 & 컨트롤
+        # 윗줄: 대시보드 타이틀 & 우측 제어 컨트롤 (항상 위, 소리, 나가기)
         h_row1 = tk.Frame(header, bg=COLOR_PANEL)
         h_row1.pack(fill=tk.X)
 
         tk.Label(h_row1, text="👑 방장 대시보드", font=FONT_TITLE, fg=COLOR_PURPLE, bg=COLOR_PANEL).pack(side=tk.LEFT)
 
-        # 방 코드 뱃지 및 복사 버튼
-        code_box = tk.Frame(h_row1, bg=COLOR_PANEL_LIGHT, padx=8, pady=3)
-        code_box.pack(side=tk.LEFT, padx=16)
-
-        tk.Label(code_box, text="방 코드:", font=FONT_BODY, fg=COLOR_TEXT_MUTED, bg=COLOR_PANEL_LIGHT).pack(side=tk.LEFT)
-        self.lbl_room_code = tk.Label(code_box, text=self.net.room_code or "", font=FONT_MONO, fg=COLOR_CYAN, bg=COLOR_PANEL_LIGHT)
-        self.lbl_room_code.pack(side=tk.LEFT, padx=(4, 8))
-
-        btn_copy = tk.Button(
-            code_box,
-            text="📋 코드 복사",
-            font=FONT_BODY,
-            bg=COLOR_CYAN,
-            fg=COLOR_TEXT_DARK,
-            activebackground="#80D8FF",
-            relief=tk.FLAT,
-            padx=6,
-            pady=1,
-            cursor="hand2",
-            command=self.copy_room_code
-        )
-        btn_copy.pack(side=tk.LEFT)
-
-        # 우측 제어 (항상 위, 소리, 나가기)
         btn_leave = tk.Button(
             h_row1,
             text="방 종료 / 나가기",
@@ -87,13 +63,14 @@ class HostView(tk.Frame):
             relief=tk.FLAT,
             padx=8,
             pady=2,
+            cursor="hand2",
             command=self._confirm_leave
         )
         btn_leave.pack(side=tk.RIGHT, padx=(8, 0))
 
         chk_top = tk.Checkbutton(
             h_row1,
-            text="항상 위 (OBS/게임용)",
+            text="항상 위",
             variable=self.always_on_top_var,
             command=lambda: self.toggle_always_on_top(self.always_on_top_var.get()),
             font=FONT_BODY,
@@ -103,7 +80,7 @@ class HostView(tk.Frame):
             activebackground=COLOR_PANEL,
             activeforeground=COLOR_CYAN
         )
-        chk_top.pack(side=tk.RIGHT, padx=6)
+        chk_top.pack(side=tk.RIGHT, padx=4)
 
         chk_sound = tk.Checkbutton(
             h_row1,
@@ -117,27 +94,69 @@ class HostView(tk.Frame):
         )
         chk_sound.pack(side=tk.RIGHT, padx=4)
 
-        # 아랫줄: 게임명 및 현재 인원 현황
-        h_row2 = tk.Frame(header, bg=COLOR_PANEL)
-        h_row2.pack(fill=tk.X, pady=(10, 0))
+        # 중간줄: 방 코드 전용 하이라이트 배너 (화면 크기에 상관없이 절대 짤리지 않음)
+        code_banner = tk.Frame(header, bg=COLOR_PANEL_LIGHT, padx=12, pady=6)
+        code_banner.pack(fill=tk.X, pady=(8, 0))
 
-        # 게임명 표시 및 변경 입력창
-        tk.Label(h_row2, text="방이름 / 게임명 / 컨텐츠명:", font=FONT_BOLD, fg=COLOR_TEXT_MUTED, bg=COLOR_PANEL).pack(side=tk.LEFT)
+        # 왼쪽: 방 코드 및 복사 버튼
+        code_left = tk.Frame(code_banner, bg=COLOR_PANEL_LIGHT)
+        code_left.pack(side=tk.LEFT)
+
+        tk.Label(code_left, text="방 코드:", font=FONT_BOLD, fg=COLOR_TEXT_MUTED, bg=COLOR_PANEL_LIGHT).pack(side=tk.LEFT)
+        self.lbl_room_code = tk.Label(
+            code_left,
+            text=self.net.room_code or "",
+            font=("Consolas", 14, "bold"),
+            fg=COLOR_CYAN,
+            bg=COLOR_PANEL_LIGHT
+        )
+        self.lbl_room_code.pack(side=tk.LEFT, padx=(6, 10))
+
+        self.btn_copy = tk.Button(
+            code_left,
+            text="📋 방 코드 복사",
+            font=FONT_BOLD,
+            bg=COLOR_CYAN,
+            fg=COLOR_TEXT_DARK,
+            activebackground="#80D8FF",
+            relief=tk.FLAT,
+            padx=10,
+            pady=3,
+            cursor="hand2",
+            command=self.copy_room_code
+        )
+        self.btn_copy.pack(side=tk.LEFT)
+
+        # 오른쪽: 참가 인원 & 레디 카운터
+        self.lbl_player_count = tk.Label(
+            code_banner,
+            text="참가 인원: 0명 | 준비 완료: 0명",
+            font=FONT_TITLE,
+            fg=COLOR_READY,
+            bg=COLOR_PANEL_LIGHT
+        )
+        self.lbl_player_count.pack(side=tk.RIGHT)
+
+        # 아랫줄: 게임명 표시 및 변경
+        h_row3 = tk.Frame(header, bg=COLOR_PANEL)
+        h_row3.pack(fill=tk.X, pady=(8, 0))
+
+        tk.Label(h_row3, text="방이름 / 게임명 / 컨텐츠명:", font=FONT_BOLD, fg=COLOR_TEXT_MUTED, bg=COLOR_PANEL).pack(side=tk.LEFT)
         self.entry_game_name = tk.Entry(
-            h_row2,
+            h_row3,
             font=FONT_BOLD,
             bg=COLOR_PANEL_LIGHT,
             fg=COLOR_TEXT_MAIN,
             insertbackground=COLOR_TEXT_MAIN,
             relief=tk.FLAT,
-            width=24
+            width=22
         )
         saved_game = self.net.room_info.get("game_name") or load_config().get("host_game_name", "")
         self.entry_game_name.insert(0, saved_game)
         self.entry_game_name.pack(side=tk.LEFT, padx=6, ipady=3)
 
         btn_update_game = tk.Button(
-            h_row2,
+            h_row3,
             text="수정",
             font=FONT_BODY,
             bg=COLOR_PANEL_LIGHT,
@@ -145,19 +164,10 @@ class HostView(tk.Frame):
             relief=tk.FLAT,
             padx=6,
             pady=1,
+            cursor="hand2",
             command=self._update_game_name
         )
         btn_update_game.pack(side=tk.LEFT)
-
-        # 인원수 & 레디 카운터
-        self.lbl_player_count = tk.Label(
-            h_row2,
-            text="참가 인원: 0명 | 준비 완료: 0명",
-            font=FONT_TITLE,
-            fg=COLOR_READY,
-            bg=COLOR_PANEL
-        )
-        self.lbl_player_count.pack(side=tk.RIGHT)
 
         # 2. 방장 공지사항 입력바
         notice_bar = tk.Frame(self, bg=COLOR_PANEL, padx=14, pady=6, highlightbackground=COLOR_BORDER, highlightthickness=1)
@@ -184,6 +194,7 @@ class HostView(tk.Frame):
             fg=COLOR_CYAN,
             relief=tk.FLAT,
             padx=10,
+            cursor="hand2",
             command=self._send_notice
         )
         btn_notice.pack(side=tk.RIGHT)
@@ -231,6 +242,7 @@ class HostView(tk.Frame):
             relief=tk.FLAT,
             padx=10,
             pady=4,
+            cursor="hand2",
             command=self._ping_all
         )
         btn_ping.pack(side=tk.LEFT, padx=3)
@@ -244,6 +256,7 @@ class HostView(tk.Frame):
             relief=tk.FLAT,
             padx=10,
             pady=4,
+            cursor="hand2",
             command=self._reset_ready
         )
         btn_reset.pack(side=tk.LEFT, padx=3)
@@ -257,6 +270,7 @@ class HostView(tk.Frame):
             relief=tk.FLAT,
             padx=10,
             pady=4,
+            cursor="hand2",
             command=self._divide_teams
         )
         btn_teams.pack(side=tk.LEFT, padx=3)
@@ -270,6 +284,7 @@ class HostView(tk.Frame):
             relief=tk.FLAT,
             padx=10,
             pady=4,
+            cursor="hand2",
             command=self._pick_random
         )
         btn_raffle.pack(side=tk.LEFT, padx=3)
@@ -286,6 +301,7 @@ class HostView(tk.Frame):
             relief=tk.FLAT,
             padx=10,
             pady=4,
+            cursor="hand2",
             command=self._kick_selected
         )
         btn_kick.pack(side=tk.RIGHT, padx=3)
@@ -299,7 +315,10 @@ class HostView(tk.Frame):
         code = self.net.room_code or ""
         self.clipboard_clear()
         self.clipboard_append(code)
-        messagebox.showinfo("복사 완료", f"방 코드 [{code}]가 클립보드에 복사되었습니다!\n시청자 채팅창이나 디스코드에 붙여넣어 주세요.")
+
+        # 버튼 시각적 즉각 피드백 (1.5초간 초록색 '✅ 복사 완료!' 전환)
+        self.btn_copy.config(text="✅ 복사 완료!", bg=COLOR_READY, fg=COLOR_TEXT_DARK)
+        self.after(1500, lambda: self.btn_copy.config(text="📋 방 코드 복사", bg=COLOR_CYAN, fg=COLOR_TEXT_DARK))
 
     def _update_game_name(self):
         new_name = self.entry_game_name.get().strip()
@@ -354,7 +373,16 @@ class HostView(tk.Frame):
         msg += f"🔵 청팀 (A팀):\n" + "\n".join(f"  • {name}" for name in team_a) + "\n\n"
         msg += f"🔴 홍팀 (B팀):\n" + "\n".join(f"  • {name}" for name in team_b)
 
-        messagebox.showinfo("팀 나누기 완료", msg)
+        # 디스코드 및 채팅용 텍스트 복사 기능 포함
+        clipboard_text = (
+            f"🎮 [{self.net.room_info.get('game_name', '내전')} 팀 배정 결과]\n"
+            f"🔵 청팀: {', '.join(team_a)}\n"
+            f"🔴 홍팀: {', '.join(team_b)}"
+        )
+        self.clipboard_clear()
+        self.clipboard_append(clipboard_text)
+
+        messagebox.showinfo("팀 나누기 완료 (클립보드 복사됨)", f"{msg}\n\n📋 결과가 클립보드에 복사되었습니다! 채팅창이나 디스코드에 붙여넣기(Ctrl+V) 하세요.")
 
     def _pick_random(self):
         players = list(self.net.players.values())
@@ -386,14 +414,12 @@ class HostView(tk.Frame):
         self.after(0, lambda: self._refresh_room_info(info))
 
     def _refresh_player_list(self, players: dict):
-        # 기존 목록 비우기
         for item in self.tree.get_children():
             self.tree.delete(item)
 
         total_players = len(players)
         ready_count = 0
 
-        # 레디 완료자 우선 정렬
         sorted_players = sorted(players.values(), key=lambda p: (not p.get("is_ready", False), p.get("nickname", "")))
 
         for p in sorted_players:

@@ -1,6 +1,7 @@
 """
 초기 시작 화면 (Lobby / Mode Selection Screen)
 - 방장 모드(방 만들기) 및 참가자 모드(방 입장) 선택
+- 로비 방 코드 복사 및 새로고침 지원
 - 로컬 PC 입력값 영구 저장 및 복원 연동
 """
 
@@ -128,12 +129,27 @@ class WelcomeScreen(tk.Frame):
         code_title_row.pack(fill=tk.X)
         tk.Label(code_title_row, text="방 코드", font=FONT_BOLD, fg=COLOR_TEXT_MAIN, bg=COLOR_PANEL).pack(side=tk.LEFT)
 
+        # 방 코드 복사 버튼 (로비에서도 즉시 복사 가능)
+        self.btn_lobby_copy = tk.Button(
+            code_title_row,
+            text="📋 복사",
+            font=("Malgun Gothic", 8),
+            bg=COLOR_PANEL_LIGHT,
+            fg=COLOR_CYAN,
+            relief=tk.FLAT,
+            bd=0,
+            padx=4,
+            cursor="hand2",
+            command=self._copy_host_code
+        )
+        self.btn_lobby_copy.pack(side=tk.RIGHT, padx=(2, 0))
+
         btn_regen = tk.Button(
             code_title_row,
             text="🎲 새 코드",
             font=("Malgun Gothic", 8),
             bg=COLOR_PANEL_LIGHT,
-            fg=COLOR_CYAN,
+            fg=COLOR_TEXT_MUTED,
             relief=tk.FLAT,
             bd=0,
             padx=4,
@@ -289,6 +305,14 @@ class WelcomeScreen(tk.Frame):
                 command=self.on_check_update
             )
             btn_chk_ver.pack(side=tk.LEFT, padx=4)
+
+    def _copy_host_code(self):
+        code = self.entry_room_code.get().strip()
+        if code:
+            self.clipboard_clear()
+            self.clipboard_append(code)
+            self.btn_lobby_copy.config(text="✅ 복사됨!", fg=COLOR_READY)
+            self.after(1500, lambda: self.btn_lobby_copy.config(text="📋 복사", fg=COLOR_CYAN))
 
     def _regenerate_host_code(self):
         new_code = generate_random_room_code()

@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
-  "download_url": "https://github.com/sandcat22/streamer_party_ready/releases/download/v1.0.0/StreamerPartyReady.exe",
-  "notes": "스트리머 파티 매칭 & 레디 체커 v1.0.0 정식 릴리즈"
+  "version": "1.0.1",
+  "download_url": "https://github.com/sandcat22/streamer_party_ready/releases/download/v1.0.1/StreamerPartyReady.exe",
+  "notes": "방 코드 복사 버튼 디자인 전면 개선 및 로비/대시보드 원클릭 복사 기능 추가"
 }
