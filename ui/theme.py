@@ -62,16 +62,62 @@ def apply_forced_dark_mode(root):
     """윈도우 OS 타이틀바 및 모든 위젯에 완벽한 강제 다크모드 적용"""
     if sys.platform == "win32":
         try:
+            # 1. uxtheme의 SetPreferredAppMode(2: ForceDark) 호출
+            try:
+                uxtheme = ctypes.windll.uxtheme
+                set_app_mode = ctypes.WINFUNCTYPE(ctypes.c_int, ctypes.c_int)((135, uxtheme))
+                set_app_mode(2)
+            except Exception:
+                pass
+
             root.update_idletasks()
-            hwnd = ctypes.windll.user32.GetParent(root.winfo_id())
-            if not hwnd:
-                hwnd = root.winfo_id()
-            value = ctypes.c_int(2)
-            # Windows 10 build 19041+ 및 Windows 11 (DWMWA_USE_IMMERSIVE_DARK_MODE = 20)
-            res = ctypes.windll.dwmapi.DwmSetWindowAttribute(hwnd, 20, ctypes.byref(value), ctypes.sizeof(value))
-            if res != 0:
-                # 구형 Windows 10 (19) 호환
-                ctypes.windll.dwmapi.DwmSetWindowAttribute(hwnd, 19, ctypes.byref(value), ctypes.sizeof(value))
+
+            def _apply_titlebar_dark():
+                try:
+                    try:
+                        frame_hex = root.wm_frame()
+                        hwnd = int(frame_hex, 16) if frame_hex else 0
+                    except Exception:
+                        hwnd = 0
+
+                    if not hwnd:
+                        hwnd = ctypes.windll.user32.GetParent(root.winfo_id()) or root.winfo_id()
+
+                    if hwnd:
+                        # 다크 모드 윈도우 컨트롤 테마 적용
+                        try:
+                            ctypes.windll.uxtheme.SetWindowTheme(hwnd, "DarkMode_Explorer", None)
+                        except Exception:
+                            pass
+
+                        # Windows 11 전용 타이틀바 색상 (#0D1117 = 0x0017110D, 텍스트 흰색 = 0x00FFFFFF)
+                        try:
+                            cap_color = ctypes.c_int(0x0017110D)
+                            ctypes.windll.dwmapi.DwmSetWindowAttribute(hwnd, 35, ctypes.byref(cap_color), ctypes.sizeof(cap_color))
+                            text_color = ctypes.c_int(0x00FFFFFF)
+                            ctypes.windll.dwmapi.DwmSetWindowAttribute(hwnd, 36, ctypes.byref(text_color), ctypes.sizeof(text_color))
+                        except Exception:
+                            pass
+
+                        # Windows 10/11 Immersive Dark Mode 강제 (20, 구버전 19)
+                        # Windows 10에서는 c_int(1) (BOOL TRUE)이어야 안정적으로 적용됨
+                        for attr in (20, 19):
+                            try:
+                                val = ctypes.c_int(1)
+                                res = ctypes.windll.dwmapi.DwmSetWindowAttribute(hwnd, attr, ctypes.byref(val), ctypes.sizeof(val))
+                                if res == 0:
+                                    break
+                            except Exception:
+                                pass
+
+                        # DWM 프레임 강제 재페인팅 (SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER)
+                        ctypes.windll.user32.SetWindowPos(hwnd, 0, 0, 0, 0, 0, 0x0027)
+                except Exception:
+                    pass
+
+            _apply_titlebar_dark()
+            # 윈도우가 화면에 완전히 매핑된 후에도 타이틀바가 유지되도록 보장
+            root.after(50, _apply_titlebar_dark)
         except Exception:
             pass
 

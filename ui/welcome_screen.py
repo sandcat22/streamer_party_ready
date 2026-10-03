@@ -167,8 +167,8 @@ class WelcomeScreen(tk.Frame):
             relief=tk.FLAT,
             bd=0
         )
-        saved_room = self.config.get("host_room_code") or generate_random_room_code()
-        self.entry_room_code.insert(0, saved_room)
+        # 시작할 때마다 항상 새로운 랜덤 방 코드 생성 (매번 동일한 코드 방지)
+        self.entry_room_code.insert(0, generate_random_room_code())
         self.entry_room_code.pack(fill=tk.X, pady=(4, 0), ipady=6)
 
         # 인원수 제한
@@ -319,11 +319,10 @@ class WelcomeScreen(tk.Frame):
         if max_players < 0:
             max_players = 0
 
-        # 입력값을 로컬 PC에 영구 저장
+        # 입력값을 로컬 PC에 영구 저장 (방 코드는 매번 새로 생성되므로 저장 제외)
         save_config({
             "host_game_name": game_name,
             "host_nickname": host_name,
-            "host_room_code": room_code,
             "host_max_players": str(max_players),
         })
 

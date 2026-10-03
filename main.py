@@ -16,6 +16,15 @@ try:
 except Exception:
     pass
 
+# Windows 10/11 시스템 및 창 전역 강제 다크모드 선언 (uxtheme ordinal 135: ForceDark)
+try:
+    if sys.platform == "win32":
+        uxtheme = ctypes.windll.uxtheme
+        set_app_mode = ctypes.WINFUNCTYPE(ctypes.c_int, ctypes.c_int)((135, uxtheme))
+        set_app_mode(2)  # 2: ForceDark
+except Exception:
+    pass
+
 # 프로젝트 경로 설정
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 if CURRENT_DIR not in sys.path:
