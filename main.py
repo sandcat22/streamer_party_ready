@@ -31,9 +31,13 @@ if CURRENT_DIR not in sys.path:
     sys.path.insert(0, CURRENT_DIR)
 
 from ui.main_window import PartyReadyApp
+from network.updater import cleanup_leftover_updater_files
 
 
 def main():
+    # 이전 업데이트 잔여 임시 파일(_new.exe, updater.bat 등) 자동 청소
+    cleanup_leftover_updater_files()
+
     root = tk.Tk()
 
     # 아이콘 적용

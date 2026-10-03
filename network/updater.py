@@ -13,9 +13,29 @@ import time
 import urllib.request
 import subprocess
 import threading
+import tempfile
 from typing import Optional, Dict, Any, Callable
 
 CURRENT_APP_VERSION = "1.0.3"
+
+
+def cleanup_leftover_updater_files():
+    """이전 버전에서 사용자 폴더에 남아있을 수 있는 _new.exe, updater.bat 등 임시 파일 자동 청소"""
+    try:
+        if getattr(sys, 'frozen', False):
+            exe_dir = os.path.dirname(os.path.abspath(sys.executable))
+        else:
+            exe_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dist")
+
+        for junk in ("StreamerPartyReady_new.exe", "updater.bat", "update.bat"):
+            junk_path = os.path.join(exe_dir, junk)
+            if os.path.exists(junk_path):
+                try:
+                    os.remove(junk_path)
+                except Exception:
+                    pass
+    except Exception:
+        pass
 
 
 def parse_version(v_str: str) -> tuple:
@@ -114,7 +134,7 @@ class AutoUpdater:
         progress_callback: Optional[Callable[[int, int], None]] = None,
         on_complete: Optional[Callable[[bool, str], None]] = None
     ):
-        """새 exe 파일을 다운로드한 뒤 배치 스크립트로 교체 및 재실행"""
+        """새 exe 파일을 임시 폴더에 안전하게 다운로드한 뒤 기존 파일을 교체하고 재실행"""
         def _worker():
             try:
                 # 현재 실행 파일의 실제 경로 확인
@@ -128,7 +148,9 @@ class AutoUpdater:
                     os.makedirs(exe_dir, exist_ok=True)
                     target_exe = os.path.join(exe_dir, "StreamerPartyReady.exe")
 
-                new_exe = os.path.join(exe_dir, "StreamerPartyReady_new.exe")
+                # 사용자 폴더에 _new.exe나 updater.bat이 절대 노출되지 않도록 시스템 TEMP 폴더에 격리
+                temp_dir = tempfile.mkdtemp(prefix="spr_update_")
+                downloaded_exe = os.path.join(temp_dir, "StreamerPartyReady_download.exe")
 
                 headers = {"User-Agent": "StreamerPartyReady-AutoUpdater"}
                 req = urllib.request.Request(download_url, headers=headers)
@@ -140,7 +162,7 @@ class AutoUpdater:
                     downloaded = 0
                     chunk_size = 64 * 1024
 
-                    with open(new_exe, "wb") as f:
+                    with open(downloaded_exe, "wb") as f:
                         while True:
                             chunk = resp.read(chunk_size)
                             if not chunk:
@@ -150,8 +172,12 @@ class AutoUpdater:
                             if progress_callback:
                                 progress_callback(downloaded, total_size)
 
-                # 교체용 Windows 배치 파일 생성
-                updater_bat = os.path.join(exe_dir, "updater.bat")
+                # TEMP 폴더 내에 배치 스크립트 생성 (사용자 폴더에는 생성하지 않음)
+                current_pid = os.getpid()
+                updater_bat = os.path.join(temp_dir, "updater.bat")
+                leftover_new = os.path.join(exe_dir, "StreamerPartyReady_new.exe")
+                leftover_bat = os.path.join(exe_dir, "updater.bat")
+
                 bat_script = f"""@echo off
 chcp 65001 > nul
 set _PYI_PARENT_PROCESS_LEVEL=
@@ -160,21 +186,38 @@ set _PYI_SPLASH_IPC=
 set PYTHONPATH=
 set PYTHONHOME=
 
-timeout /t 1 /nobreak > nul
+:: 1. 부모 프로세스 종료 대기 및 확실한 파일 락 해제 (ping 대기 - timeout 리디렉션 에러 방지)
+taskkill /f /pid {current_pid} >nul 2>nul
+ping 127.0.0.1 -n 2 > nul
 
-:retry
-del "{target_exe}" >nul 2>nul
+:: 2. 사용자 폴더에 남아있을 수 있는 구버전 잔여 임시 파일 정리
+del /f /q "{leftover_new}" >nul 2>nul
+del /f /q "{leftover_bat}" >nul 2>nul
+
+:: 3. 기존 실행 파일 삭제 및 최신 파일로 교체 (최대 15회 재시도)
+set RETRY=0
+:loop_del
+del /f /q "{target_exe}" >nul 2>nul
 if exist "{target_exe}" (
-    timeout /t 1 /nobreak > nul
-    goto retry
+    set /a RETRY+=1
+    if %RETRY% leq 15 (
+        ping 127.0.0.1 -n 2 > nul
+        goto loop_del
+    )
 )
 
-move /y "{new_exe}" "{target_exe}" >nul 2>nul
+move /y "{downloaded_exe}" "{target_exe}" >nul 2>nul
+if not exist "{target_exe}" (
+    copy /y "{downloaded_exe}" "{target_exe}" >nul 2>nul
+)
 
+:: 4. 업데이트된 최신 프로그램 정상 시작
+cd /d "{exe_dir}"
 start "" "{target_exe}"
-timeout /t 3 /nobreak > nul
 
-(goto) 2>nul & del "%~f0"
+:: 5. 시스템 TEMP 임시 폴더 자체 정리 (3초 후 완전 삭제)
+ping 127.0.0.1 -n 3 > nul
+(goto) 2>nul & rd /s /q "{temp_dir}"
 """
                 with open(updater_bat, "w", encoding="utf-8") as f:
                     f.write(bat_script)
@@ -188,8 +231,9 @@ timeout /t 3 /nobreak > nul
                     if key.startswith("_PYI_") or key.startswith("_MEI") or key in ("PYTHONPATH", "PYTHONHOME"):
                         clean_env.pop(key, None)
 
-                # 업데이터 배치 스크립트 실행 후 현재 프로세스 정상 종료
-                subprocess.Popen(["cmd.exe", "/c", updater_bat], shell=True, env=clean_env)
+                # 콘솔 창 깜빡임 없이(CREATE_NO_WINDOW) 백그라운드에서 조용히 실행 후 현재 프로세스 정상 종료
+                CREATE_NO_WINDOW = 0x08000000
+                subprocess.Popen(["cmd.exe", "/c", updater_bat], shell=False, env=clean_env, creationflags=CREATE_NO_WINDOW)
                 time.sleep(0.5)
                 os._exit(0)
 
